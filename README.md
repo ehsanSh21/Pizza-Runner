@@ -39,6 +39,87 @@ WHERE
 	co.ID = subquery.ID;
 ```
 
+#### update the 'distance' field in the runner_orders
+
+```sql
+UPDATE runner_orders
+SET distance = regexp_replace(distance, '[^\d.]+', '', 'g')
+WHERE distance IS NOT NULL;
+```
+
+#### update the 'duration' field in the runner_orders
+
+```sql
+UPDATE runner_orders
+SET duration = regexp_replace(duration, '[^\d]+', '', 'g')
+WHERE duration IS NOT NULL;
+```
+
+#### create and store to order_extras
+
+```sql
+CREATE TABLE order_extras (
+  "order_id" INTEGER,
+	"order_items" INTEGER,
+  "pizza_id" INTEGER,
+  "ingredient_id" INTEGER
+);
+
+
+INSERT INTO order_extras ("order_id", "pizza_id","order_items","ingredient_id")
+SELECT "order_id", "pizza_id","order_items", regexp_split_to_table("extras", ', ')::INTEGER
+FROM customer_orders
+WHERE "extras" IS NOT NULL
+AND "extras" != ''
+AND "extras" != 'null';
+```
+
+#### create and store to order_exclusions
+
+```sql
+CREATE TABLE order_exclusions (
+  "order_id" INTEGER,
+	"order_items" INTEGER,
+  "pizza_id" INTEGER,
+  "ingredient_id" INTEGER
+);
+
+
+INSERT INTO order_exclusions ("order_id", "pizza_id","order_items","ingredient_id")
+SELECT "order_id", "pizza_id","order_items", regexp_split_to_table("exclusions", ', ')::INTEGER
+FROM customer_orders
+WHERE "exclusions" IS NOT NULL
+AND "exclusions" != ''
+AND "exclusions" != 'null';
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

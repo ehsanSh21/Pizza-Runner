@@ -17,7 +17,7 @@ Link: https://dbdiagram.io/d/Pizza-Runner-5f3e085ccf48a141ff558487?utm_source=db
 Before i start writing my SQL queries however - i want to investigate the data, i want to do something with some of those null values and data types in the customer_orders and runner_orders tables!
 
 
-##### update and insert order_items
+#### update and insert order_items
 
 ```sql
 
@@ -92,6 +92,94 @@ WHERE "exclusions" IS NOT NULL
 AND "exclusions" != ''
 AND "exclusions" != 'null';
 ```
+
+
+### Case Study Questions
+
+#### A. Pizza Metrics
+
+
+##### For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+
+```sql
+SELECT 
+-- *
+sub2.customer_id,
+sum(
+case when sub2.changes='*'
+then 1
+ELSE 0
+END
+) as had_change,
+sum(
+case when sub2.changes='-'
+then 1
+ELSE 0
+END
+) as no_change
+
+FROM
+(
+SELECT
+sub.id,
+sub.customer_id,
+sub.order_items,
+(
+case WHEN count(DISTINCT ex_order_id) = 1 or count(DISTINCT exclusions_order_id) = 1
+THEN '*'
+ELSE '-'
+END
+)as changes
+FROM
+(SELECT 
+customer_orders.id,
+customer_orders.order_id,
+customer_orders.customer_id,
+customer_orders.order_items,
+order_extras.order_id as ex_order_id,
+order_exclusions.order_id as exclusions_order_id
+FROM 
+customer_orders
+LEFT JOIN order_extras
+ON customer_orders.order_id=order_extras.order_id
+AND customer_orders.order_items=order_extras.order_items
+
+LEFT JOIN order_exclusions
+ON customer_orders.order_id=order_exclusions.order_id
+AND customer_orders.order_items=order_exclusions.order_items) as sub
+GROUP BY sub.id,sub.customer_id,sub.order_items) as sub2
+GROUP BY sub2.customer_id
+;
+```
+
+##### How many pizzas were delivered that had both exclusions and extras?
+
+```sql
+SELECT
+count(DISTINCT customer_orders.id) as pizzas_count
+FROM 
+customer_orders
+INNER JOIN order_extras 
+ON customer_orders.order_id=order_extras.order_id
+AND customer_orders.order_items=order_extras.order_items
+
+INNER JOIN order_exclusions
+ON customer_orders.order_id=order_exclusions.order_id
+AND customer_orders.order_items=order_exclusions.order_items;
+```
+
+##### What was the total volume of pizzas ordered for each hour of the day?
+
+```sql
+SELECT
+extract(hour FROM order_time) as hour,
+count(*) as total_volume
+FROM
+customer_orders
+GROUP BY extract(hour FROM order_time)
+;
+```
+
 
 
 

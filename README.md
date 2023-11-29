@@ -180,7 +180,58 @@ GROUP BY extract(hour FROM order_time)
 ;
 ```
 
+#### B. Runner and Customer Experience
 
+
+##### What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+```sql
+SELECT
+runner_id,
+avg(df_minutes) as average_time
+FROM
+(SELECT 
+runner_orders.runner_id,
+customer_orders.order_id,
+customer_orders.order_time,
+runner_orders.pickup_time,
+EXTRACT(EPOCH FROM TO_TIMESTAMP(runner_orders.pickup_time, 'YYYY-MM-DD HH24:MI:SS') - customer_orders.order_time) / 60 AS df_minutes
+FROM 
+customer_orders
+JOIN runner_orders
+ON customer_orders.order_id=runner_orders.order_id
+WHERE runner_orders.pickup_time is not null
+AND runner_orders.pickup_time != 'null'
+GROUP BY customer_orders.order_id,customer_orders.order_time,runner_orders.runner_id,runner_orders.pickup_time) as sub
+GROUP BY sub.runner_id
+;
+```
+
+##### What was the average distance travelled for each customer?
+
+```sql
+SELECT
+customer_id,
+avg(sub.distance::numeric) as avg_dis
+FROM
+(SELECT 
+runner_orders.runner_id,
+customer_orders.customer_id,
+customer_orders.order_id,
+runner_orders.distance
+FROM 
+customer_orders
+JOIN runner_orders
+ON customer_orders.order_id=runner_orders.order_id
+WHERE runner_orders.distance IS NOT NULL
+AND runner_orders.distance != ''
+GROUP BY runner_orders.runner_id,
+customer_orders.customer_id,
+customer_orders.order_id,
+runner_orders.distance
+ORDER BY order_id) as sub
+GROUP BY sub.customer_id;
+```
 
 
 

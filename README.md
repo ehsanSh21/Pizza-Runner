@@ -180,6 +180,7 @@ GROUP BY extract(hour FROM order_time)
 ;
 ```
 
+
 #### B. Runner and Customer Experience
 
 
@@ -234,8 +235,80 @@ GROUP BY sub.customer_id;
 ```
 
 
+#### C. Ingredient Optimisation
 
+##### What was the most commonly added extra?
 
+```sql
+SELECT ingredient_id,
+pizza_toppings.topping_name,
+ COUNT(*) AS ingredient_count
+FROM customer_orders
+JOIN order_extras ON customer_orders.order_id = order_extras.order_id
+    AND customer_orders.order_items = order_extras.order_items
+JOIN pizza_toppings ON pizza_toppings.topping_id=order_extras.ingredient_id
+GROUP BY ingredient_id,pizza_toppings.topping_name
+ORDER BY ingredient_count DESC
+LIMIT 1;
+```
+
+##### Generate an order item for each record in the customers_orders table in the format of one of the following:
+<ul>
+      <li><code class="language-plaintext highlighter-rouge">Meat Lovers</code></li>
+      <li><code class="language-plaintext highlighter-rouge">Meat Lovers - Exclude Beef</code></li>
+      <li><code class="language-plaintext highlighter-rouge">Meat Lovers - Extra Bacon</code></li>
+      <li><code class="language-plaintext highlighter-rouge">Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers</code></li>
+</ul>
+
+```sql
+
+SELECT
+sub2.order_id,
+sub2.order_items,
+sub2.customer_id,
+sub2.pizza_id,
+sub2.extras,
+sub2.exclusions,
+CONCAT(
+sub2.pizza_name,
+
+CASE WHEN sub2.extraexclusions_names IS NOT NULL THEN ' - Exclude ' ELSE '' END,
+sub2.extraexclusions_names,
+
+CASE WHEN sub2.extra_names IS NOT NULL THEN ' - Extra ' ELSE '' END,
+sub2.extra_names
+
+) as ordered_items 
+FROM
+(SELECT
+sub.order_id,sub.order_items,sub.pizza_name,sub.customer_id,sub.extras,sub.exclusions,sub.pizza_id,
+string_agg(DISTINCT sub.extra_ingr,', ') as extra_names,
+string_agg(DISTINCT sub.exclusions_ingr,', ') as extraexclusions_names
+FROM
+(SELECT
+pizza_names.pizza_name,
+customer_orders.*,
+pizza_toppings.topping_name as exclusions_ingr,
+sec_pizz.topping_name as extra_ingr
+
+FROM 
+customer_orders
+LEFT JOIN order_extras ON customer_orders.order_id=order_extras.order_id
+AND customer_orders.order_items=order_extras.order_items
+
+LEFT JOIN order_exclusions ON customer_orders.order_id=order_exclusions.order_id
+AND customer_orders.order_items = order_exclusions.order_items
+
+LEFT JOIN pizza_toppings ON order_exclusions.ingredient_id=pizza_toppings.topping_id
+LEFT JOIN pizza_toppings as sec_pizz ON order_extras.ingredient_id=sec_pizz.topping_id
+
+JOIN pizza_names ON customer_orders.pizza_id=pizza_names.pizza_id
+
+ORDER BY order_id desc) as sub
+
+GROUP BY sub.order_id,sub.order_items,sub.pizza_name,sub.customer_id,sub.extras,sub.exclusions,sub.pizza_id) as sub2;
+
+```
 
 
 
